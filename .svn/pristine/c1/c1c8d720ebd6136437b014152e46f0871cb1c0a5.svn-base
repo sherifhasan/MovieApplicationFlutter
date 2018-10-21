@@ -1,0 +1,194 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+import './StarRating.dart';
+
+void main() => runApp(new MyApp());
+
+class MyApp extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() {
+    return new MoviesState();
+  }
+}
+
+class MoviesState extends State<MyApp> {
+  var _isLoading = true;
+  var movies;
+
+  @override
+  Widget build(BuildContext context) {
+    return new MaterialApp(
+        home: new Scaffold(
+      appBar: new AppBar(
+        title: new Text("Movie App"),
+        actions: <Widget>[
+          new IconButton(
+            icon: new Icon(Icons.refresh),
+            onPressed: () {
+              _fetchData();
+            },
+          )
+        ],
+      ),
+      body: new Center(
+        child: _isLoading
+            ? new CircularProgressIndicator()
+            : new ListView.builder(
+                itemCount: this.movies != null ? this.movies.length : 0,
+                itemBuilder: (context, i) {
+                  final movie = this.movies[i];
+                  return new FlatButton(
+                      padding: new EdgeInsets.all(0.0),
+                      onPressed: () {
+                        print("movie cell pressed");
+                        Navigator.push(
+                            context,
+                            new MaterialPageRoute(
+                                builder: (context) => new DetailPage(movie)));
+                      },
+                      child: new MovieCell(movie));
+                }),
+      ),
+    ));
+  }
+
+  _fetchData() async {
+    print("Attemping to fetch data from network");
+    final url =
+        "https://api.themoviedb.org/3/movie/popular?api_key=e48aff998933389fb8b85b6b1666842f";
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final map = json.decode(response.body);
+      final moviesJson = map["results"];
+      setState(() {
+        _isLoading = false;
+        this.movies = moviesJson;
+      });
+
+    }
+  }
+}
+
+class DetailPage extends StatelessWidget {
+  final movie;
+
+  DetailPage(this.movie);
+
+  @override
+  Widget build(BuildContext context) {
+    final releaseDate = movie["release_date"];
+    final rating = movie["vote_average"];
+    double rate = (double.parse(rating.toString())) / 2;
+    return new Scaffold(
+      appBar: new AppBar(
+        title: new Text(movie["title"]),
+      ),
+      body: new ListView(
+        children: <Widget>[
+          new Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              new Image.network(
+                MovieCell.BASE_POSTER_URL + movie["backdrop_path"],
+                width: 600.0,
+                height: 240.0,
+                fit: BoxFit.cover,
+              ),
+              new Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: new Text(
+                  "Overview",
+                  style: new TextStyle(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue),
+                ),
+              ),
+              new Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: new Text(
+                  movie["overview"],
+                  style: new TextStyle(fontSize: 15.0),
+                ),
+              )
+            ],
+          ),
+          new Row(
+            children: <Widget>[
+              new Container(
+                padding: const EdgeInsets.all(8.0),
+                child: new StarRating(
+                  rating: rate,
+                  color: Colors.red,
+                ),
+              ),
+              new Container(
+                width: 100.0,
+              ),
+              new Text(
+                releaseDate,
+                style: new TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18.0,
+                    color: Colors.blue),
+                textAlign: TextAlign.end,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class MovieCell extends StatelessWidget {
+  final movie;
+  static const String BASE_POSTER_URL = "http://image.tmdb.org/t/p/w342";
+
+  MovieCell(this.movie);
+
+  @override
+  Widget build(BuildContext context) {
+    final rating = movie["vote_average"];
+    double rate = (double.parse(rating.toString())) / 2;
+    final releaseDate = movie["release_date"];
+    return new Column(
+      children: <Widget>[
+        new Container(
+          padding: new EdgeInsets.all(16.0),
+          child: new Column(
+            children: <Widget>[
+              new Image.network(BASE_POSTER_URL + movie["poster_path"]),
+              new Container(
+                height: 8.0,
+              ),
+              new Row(
+                children: <Widget>[
+                  new StarRating(
+                    rating: rate,
+                    color: Colors.red,
+                  ),
+                  new Container(
+                    width: 108.0,
+                  ),
+                  new Text(
+                    releaseDate,
+                    style: new TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18.0,
+                        color: Colors.blue),
+                    textAlign: TextAlign.end,
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+        new Divider()
+      ],
+    );
+  }
+}
